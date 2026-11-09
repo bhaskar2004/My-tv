@@ -49,12 +49,16 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Smart TV launcher: a native Android TV home screen. */
+/** Smart TV launcher: a native, light-themed Android TV home screen. */
 public class MainActivity extends Activity {
 
     private static final int COLS = 6;
-    private static final int SURF = 0xFF1A1F2A;
-    private static final int MUTED = 0xFF8B93A3;
+    private static final int SURF = 0xFFFFFFFF;
+    private static final int INK = 0xFF16181D;
+    private static final int INK2 = 0xFF3A3F49;
+    private static final int MUTED = 0xFF737A86;
+    private static final String DEMO_URL =
+            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
     static class AppItem {
         String label, pkg;
@@ -74,6 +78,7 @@ public class MainActivity extends Activity {
     private ScrollView scroll;
     private LinearLayout content;
     private TextView net;
+    private Typeface light, med;
     private float u; // 1% of the screen width, in pixels: everything scales from this
     private String focusKey;
     private View firstTile;
@@ -107,10 +112,12 @@ public class MainActivity extends Activity {
         pm = getPackageManager();
         prefs = getSharedPreferences("launcher", MODE_PRIVATE);
         u = getResources().getDisplayMetrics().widthPixels / 100f;
+        light = Typeface.create("sans-serif-light", Typeface.NORMAL);
+        med = Typeface.create("sans-serif-medium", Typeface.NORMAL);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xFF141A2E, 0xFF0B0D12}));
+                new int[]{0xFFF8F6F2, 0xFFEDE9E2}));
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
@@ -236,12 +243,12 @@ public class MainActivity extends Activity {
         return Math.round(units * u);
     }
 
-    private TextView text(CharSequence s, float size, int color, boolean bold) {
+    private TextView text(CharSequence s, float size, int color, Typeface tf) {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextColor(color);
         t.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(size));
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setTypeface(tf);
         return t;
     }
 
@@ -262,18 +269,22 @@ public class MainActivity extends Activity {
         TextClock time = new TextClock(this);
         time.setFormat12Hour("h:mm a");
         time.setFormat24Hour("HH:mm");
-        time.setTextColor(Color.WHITE);
-        time.setTypeface(Typeface.DEFAULT_BOLD);
-        time.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(3f));
+        time.setTextColor(INK);
+        time.setTypeface(light);
+        time.setLetterSpacing(-0.02f);
+        time.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(4.4f));
         TextClock date = new TextClock(this);
         date.setFormat12Hour("EEEE, d MMMM");
         date.setFormat24Hour("EEEE, d MMMM");
         date.setTextColor(MUTED);
-        date.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(1.4f));
+        date.setTypeface(med);
+        date.setLetterSpacing(0.02f);
+        date.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(1.45f));
         left.addView(time);
         left.addView(date);
 
-        net = text("", 1.4f, MUTED, true);
+        net = text("", 1.4f, MUTED, med);
+        net.setLetterSpacing(0.04f);
         bar.addView(left);
         bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         bar.addView(net);
@@ -281,8 +292,9 @@ public class MainActivity extends Activity {
     }
 
     private TextView title(String s) {
-        TextView t = text(s, 1.5f, MUTED, true);
-        t.setPadding(px(5), px(1.6f), 0, px(0.2f));
+        TextView t = text(s.toUpperCase(), 1.2f, MUTED, med);
+        t.setLetterSpacing(0.14f);
+        t.setPadding(px(5), px(1.8f), 0, px(0.2f));
         return t;
     }
 
@@ -293,7 +305,7 @@ public class MainActivity extends Activity {
         hs.setClipToPadding(false);
         LinearLayout row = new LinearLayout(this);
         row.setClipChildren(false);
-        row.setPadding(px(5), px(0.9f), px(5), px(0.9f));
+        row.setPadding(px(5), px(1.3f), px(5), px(1.3f));
         for (View v : items) {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, -2);
             p.rightMargin = gap;
@@ -304,17 +316,19 @@ public class MainActivity extends Activity {
     }
 
     private View chip(String label, final Runnable r, final String key) {
-        final TextView c = text(label, 1.5f, Color.WHITE, true);
-        c.setPadding(px(2.2f), px(1.1f), px(2.2f), px(1.1f));
+        final TextView c = text(label, 1.45f, INK, med);
+        c.setLetterSpacing(0.01f);
+        c.setPadding(px(2.4f), px(1.1f), px(2.4f), px(1.1f));
         c.setBackground(round(SURF, px(5)));
+        c.setElevation(px(0.35f));
         c.setFocusable(true);
         c.setClickable(true);
         c.setTag(key);
         c.setOnClickListener(v -> r.run());
         c.setOnFocusChangeListener((v, f) -> {
             if (f) focusKey = key;
-            c.setBackground(round(f ? Color.WHITE : SURF, px(5)));
-            c.setTextColor(f ? Color.BLACK : Color.WHITE);
+            c.setBackground(round(f ? INK : SURF, px(5)));
+            c.setTextColor(f ? Color.WHITE : INK);
             v.animate().scaleX(f ? 1.07f : 1f).scaleY(f ? 1.07f : 1f).setDuration(130).start();
         });
         return c;
@@ -326,6 +340,7 @@ public class MainActivity extends Activity {
 
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
+        t.setClipChildren(false);
         t.setFocusable(true);
         t.setClickable(true);
         t.setTag(a.pkg);
@@ -335,21 +350,24 @@ public class MainActivity extends Activity {
         ring.setColor(Color.TRANSPARENT);
         ring.setCornerRadius(px(1.5f));
         FrameLayout frame = new FrameLayout(this);
+        frame.setClipChildren(false);
         frame.setPadding(pad, pad, pad, pad);
         frame.setBackground(ring);
 
         FrameLayout card = new FrameLayout(this);
         card.setBackground(round(SURF, px(1.2f)));
         card.setClipToOutline(true);
+        card.setElevation(px(0.4f));
         ImageView img = new ImageView(this);
         card.addView(img, new FrameLayout.LayoutParams(-1, -1));
         frame.addView(card, new FrameLayout.LayoutParams(-1, -1));
         t.addView(frame, new LinearLayout.LayoutParams(w, h));
 
-        final TextView lbl = text(a.label, 1.15f, MUTED, false);
+        final TextView lbl = text(a.label, 1.25f, INK2, med);
         lbl.setSingleLine();
         lbl.setEllipsize(TextUtils.TruncateAt.END);
-        lbl.setPadding(pad, px(0.5f), pad, 0);
+        lbl.setLetterSpacing(0.01f);
+        lbl.setPadding(pad, px(0.6f), pad, 0);
         t.addView(lbl, new LinearLayout.LayoutParams(w, -2));
 
         loadIcon(img, a);
@@ -361,8 +379,8 @@ public class MainActivity extends Activity {
         });
         t.setOnFocusChangeListener((v, f) -> {
             if (f) focusKey = a.pkg;
-            ring.setStroke(f ? px(0.3f) : 0, Color.WHITE);
-            lbl.setTextColor(f ? Color.WHITE : MUTED);
+            ring.setStroke(f ? px(0.3f) : 0, INK);
+            lbl.setTextColor(f ? INK : INK2);
             v.animate().scaleX(f ? 1.08f : 1f).scaleY(f ? 1.08f : 1f).setDuration(130).start();
         });
         return t;
@@ -414,7 +432,7 @@ public class MainActivity extends Activity {
         content.removeAllViews();
         firstTile = null;
 
-        // Shortcuts: real TV inputs (HDMI etc.) and system settings
+        // Shortcuts: real TV inputs (HDMI etc.), the built-in player, and system settings
         List<View> chips = new ArrayList<>();
         try {
             TvInputManager tm = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
@@ -427,6 +445,7 @@ public class MainActivity extends Activity {
             }
         } catch (Throwable ignored) {
         }
+        chips.add(chip("Play demo", this::playDemo, "demo"));
         chips.add(chip("Wi-Fi", () -> openSettings(Settings.ACTION_WIFI_SETTINGS), "s:wifi"));
         chips.add(chip("Bluetooth", () -> openSettings(Settings.ACTION_BLUETOOTH_SETTINGS), "s:bt"));
         chips.add(chip("Display", () -> openSettings(Settings.ACTION_DISPLAY_SETTINGS), "s:display"));
@@ -475,7 +494,7 @@ public class MainActivity extends Activity {
     }
 
     private void options(final AppItem a) {
-        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Light_Dialog_Alert)
                 .setTitle(a.label)
                 .setItems(new CharSequence[]{"Open", "App info", "Uninstall"}, (d, which) -> {
                     if (which == 0) launch(a);
@@ -484,6 +503,12 @@ public class MainActivity extends Activity {
                     else safeStart(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.pkg)));
                 })
                 .show();
+    }
+
+    private void playDemo() {
+        safeStart(new Intent(this, PlayerActivity.class)
+                .setData(Uri.parse(DEMO_URL))
+                .putExtra("title", "Big Buck Bunny"));
     }
 
     private void openInput(String id) {
